@@ -4,8 +4,8 @@ import numpy as np
 
 
 #data open using pandas type Dataframe
-df_standard = pd.read_csv ('./sample_csv/fd_basic_F.csv', encoding = 'cp949')
-df_to_add = pd.read_csv ('./sample_csv/fd_2018_F.csv', encoding = 'cp949')
+df_standard = pd.read_csv ('../sample_csv/df_2017_stn.csv', encoding = 'cp949')
+df_to_add = pd.read_csv ('../sample_csv/df_2018_trg.csv', encoding = 'cp949')
 
 #extract_index_code_from_standard_data
 index_code_standard=df_standard.drop_duplicates(['code'],keep='first')
@@ -65,5 +65,5 @@ for to_except_list in to_except_datas_nondouble:
 
 #take_DataFrame
 non_match_data = df_to_add.loc[total_index,:]
-non_match_data.to_excel("./Hello_Heo_Ssam_exception.xlsx")
+non_match_data.to_excel("../sample_csv/Hello_Heo_Ssam_exception.xlsx")
 

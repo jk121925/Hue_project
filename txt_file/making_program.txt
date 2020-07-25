@@ -1,0 +1,165 @@
+import pandas as pd
+import sys
+import getopt
+import itertools as it
+import numpy as np
+
+args = sys.argv[1:]
+opts, args = getopt.getopt(args, "r:g:b:h")
+
+# Basic parameters
+
+r_opt = [20]
+g_opt = [6]
+b_opt = [6]
+
+for opt, arg in opts:
+    if opt == "-r":
+        x=int(arg)
+        r_opt = [x]    
+    elif opt == "-g":
+        y=int(arg)
+        g_opt == [y]
+    elif opt == "-b":
+        z=int(arg)
+        b_opt = [z]
+    elif opt == "-h":
+        print("-r : Red bus line weight")
+        print("-b : Blue bus line weight")
+        print("-g : Green bus line weight")
+
+
+#data open using pandas type Dataframe
+df_standard = pd.read_csv ('fd_basic_F.csv', encoding = 'cp949')
+df_to_add = pd.read_csv ('fd_2018_F.csv', encoding = 'cp949')
+
+#extract_index_code_from_standard_data
+index_code_standard=df_standard.drop_duplicates(['code'],keep='first')
+index_list = index_code_standard.code.tolist()
+
+def merge_func(code, standard_data, new_data):
+    
+    #Extract key value from df_to_add
+    df_to_add_key = new_data[['y2017','y2018']]
+
+    #df_to_add_listing
+    to_add_list =[]
+    for i in range(len(new_data)):
+        data_2017 = df_to_add_key.iloc[i,0]
+        data_2018 = df_to_add_key.iloc[i,1]
+        to_add_list.append([data_2017,data_2018])
+
+    #df_standard_listing
+    standard_list = []
+    for i in range(len(standard_data)):
+        index_data_2017 = standard_data.iloc[i,6]
+        standard_list.append(index_data_2017)
+
+    #merge data
+    for i in range(len(standard_list)):
+        for j in range(len(to_add_list)):
+            index_data = standard_list[i]
+            if index_data == '0' :  standard_list[i] = [index_data,0]
+            elif index_data == to_add_list[j][0] : standard_list[i] = [index_data, to_add_list[j][1]]
+
+    #non data make 0    
+    for i in range(len(standard_list)):
+        non_data = standard_list[i]
+        if type(standard_list[i]) != list : standard_list[i] = [non_data,0]
+
+    #make index column
+    for i in range(len(standard_list)):
+        standard_list[i].insert(0,standard_data.iloc[i,0])
+    
+    #last_two_index_value
+    standard_list[-1][2] = standard_data.iloc[-1,7]
+    standard_list[-2][2] = standard_data.iloc[-2,7]
+     
+    return standard_list
+
+#check_matched_data_sorting_function_by_df_to_add
+def exception_func(code, standard_data, new_data):
+    
+    #Extract key value from df_to_add
+    df_to_add_key = new_data[['Unnamed: 0','y2017','y2018']]
+
+    #df_to_add_listing
+    to_add_list =[]
+    for i in range(len(new_data)):
+        test_index = df_to_add_key.iloc[i,0]
+        data_2017 = df_to_add_key.iloc[i,1]
+        data_2018 = df_to_add_key.iloc[i,2]
+        to_add_list.append([test_index, data_2017, data_2018])
+
+    #df_standard_listing
+    standard_list = []
+    for i in range(len(standard_data)):
+        index_data_2017 = standard_data.iloc[i,6]
+        standard_list.append(index_data_2017)
+    
+    #merge data
+    exist_2017=[]
+    for i in range(len(standard_list)):
+        for j in range(len(to_add_list)):
+            index_data = to_add_list[j][1]
+            if index_data == standard_list[i] : exist_2017.append(to_add_list[j][0])
+    sorting_list=[]
+    for i in exist_2017:
+        if i not in sorting_list :sorting_list.append(i)    
+    
+    return sorting_list
+-------------------------------------------------------------
+#produce_function
+test_dummys_except=[]
+for i in range(len(index_list)):
+    temp_standard =df_standard[df_standard['code']==index_list[i]]
+    temp_new =df_to_add[df_to_add['code']==index_list[i]]
+    exist_2017_data = exception_func(index_list,temp_standard,temp_new)
+    test_dummys_except.append(exist_2017_data)
+
+#data_conversion    
+to_except_datas=list(it.chain(*test_dummys_except))
+to_except_datas_nondouble=np.array(my_list).flatten().tolist()
+to_except_datas_nondouble.sort()
+to_except_datas_nondouble.reverse()
+
+#extract_total_index and remove_matched_data
+total_index = df_to_add.index.tolist()
+
+for to_except_list in to_except_datas_nondouble:
+    total_index.remove(to_except_list)
+
+-------------------------------------------------------
+
+test_dummys=[]
+for i in range(len(index_list)):
+    temp_standard =df_standard[df_standard['code']==index_list[i]]
+    temp_new =df_to_add[df_to_add['code']==index_list[i]]
+    test_data = merge_func(index_list,temp_standard,temp_new)
+    test_dummys.append(test_data)
+
+
+#take_DataFrame
+indexs=[] 
+y2017s=[]
+y2018s=[]
+for test in test_dummys:
+    for t in test:      
+        index = t[0]
+        y2017 = t[1]
+        y2018 = t[2]
+        indexs.append(index)
+        y2017s.append(y2017)
+        y2018s.append(y2018)
+df_merge = pd.DataFrame({'Unnamed: 0':indexs,'y2018':y2018s})
+merged_inner = pd.merge(left=df_standard, right=df_merge, left_on='Unnamed: 0', right_on='Unnamed: 0')
+
+del merged_inner['y2018_x']
+merged_inner.columns = ['Unnamed: 0','code','code_a','company','item','item_name','y2017','y2018']
+merged_inner.to_excel("Hi.xlsx")
+merged_inner
+
+
+non_match_data = df_to_add.loc[total_index,:]
+non_match_data.to_excel("Hi_exception.xlsx")
+non_match_data
